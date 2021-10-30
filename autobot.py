@@ -51,7 +51,7 @@ def CollectURLS(Domain):
     COMMAND = 'gau -b css,png,jpeg,jpg,svg,gif,ttf,woff,woff2,eot,otf,ico,js {} | anew -q temp_urls.txt'.format(Domain)
     executeCommand(COMMAND)
     # use qsreplace to remove duplicates 
-    COMMAND = 'cat temp_urls.txt | sed -e "s/=.*/=/" -e "s/URL: //" | qsreplace -a >> urls.txt 2>&1 /dev/null'
+    COMMAND = 'cat temp_urls.txt | sed -e "s/=.*/=/" -e "s/URL: //" | qsreplace -a >> urls.txt 2>&1'
     executeCommand(COMMAND)
     # deleting extra file 
     os.remove("temp_urls.txt")
@@ -105,7 +105,6 @@ def XSSAttack(Domain, BlindXSS=None):
         else:
             if TELEGRAMTokens:
                 NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : XSS Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
-
 
 def SQLInjection(Domain):
     global TELEGRAMTokens
@@ -296,6 +295,7 @@ def main():
     os.chdir(OPDir)
     # Setting-up the spinner 
     spinner = Halo(text=' 🤖 Work in Progress..', spinner='dots')
+    print(co.bullets.INFO+co.colors.CYAN+" Collecting Target Domain URLs.."+co.END)
     spinner.start()
     ## Collecting urls gg
     CollectURLS(tDomain)
