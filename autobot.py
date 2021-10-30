@@ -143,6 +143,7 @@ def SSRFScan(Domain, InteractSH):
     executeCommand('ffuf -c -w ssrf_paylod_urls.txt -u FUZZ -o ssrf_fuzz_result.txt 2>&1 /dev/null')
     # cleaning extra files
     os.remove("ssrf_urls.txt")
+    os.remove("ssrf_paylod_urls.txt")
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SSRF Scan Finished on target {} ✅".format(Domain))
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Check Your intactsh instance for any Hit!!")
