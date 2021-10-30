@@ -157,20 +157,20 @@ def IDORScan(Domain):
             NotifyBot("🥷 AutoBot : IDOR Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
 
 def Banner():
-    print("############################################")
-    print("""
-#        d8888          888            888888b.            888    
-#       d88888          888            888  "88b           888    
-#      d88P888          888            888  .88P           888    
-#     d88P 888 888  888 888888 .d88b.  8888888K.   .d88b.  888888 
-#    d88P  888 888  888 888   d88""88b 888  "Y88b d88""88b 888    
-#   d88P   888 888  888 888   888  888 888    888 888  888 888    
-#  d8888888888 Y88b 888 Y88b. Y88..88P 888   d88P Y88..88P Y88b.  
-# d88P     888 "Y88888  "Y888  "Y88P"  8888888P"   "Y88P"  "Y888    Version 0.1  
-    """) 
-    print("# "+co.BOLD+"Author : "+co.colors.CYAN+"Ajay Kmar Tekam (github.com/ajaytekam)"+co.END)
-    print("# "+co.BOLD+"Blog   : "+co.colors.CYAN+"https://sec-art.net/"+co.END)
-    print("############################################\n")
+    print(co.colors.BLUE+"################################################################################"+co.END)
+    print(co.colors.GREEN+"""                                                                     
+        d8888          888            888888b.            888    
+       d88888          888            888  "88b           888    
+      d88P888          888            888  .88P           888    
+     d88P 888 888  888 888888 .d88b.  8888888K.   .d88b.  888888 
+    d88P  888 888  888 888   d88""88b 888  "Y88b d88""88b 888    
+   d88P   888 888  888 888   888  888 888    888 888  888 888    
+  d8888888888 Y88b 888 Y88b. Y88..88P 888   d88P Y88..88P Y88b.  
+ d88P     888 "Y88888  "Y888  "Y88P"  8888888P"   "Y88P"  "Y888    """+co.colors.RED+"Version 0.1\n"+co.END)
+    print("# "+co.BOLD+"Author     : "+co.colors.CYAN+"Ajay Kumar Tekam (github.com/ajaytekam)"+co.END)
+    print("# "+co.BOLD+"Blog       : "+co.colors.CYAN+"https://sec-art.net/"+co.END)
+    print("# "+co.BOLD+"About Tool : "+co.colors.CYAN+"Perform Automated Checks for XSS, SQLI, OpenRedirect, SSRF, IDOR."+co.END)
+    print(co.colors.BLUE+"################################################################################\n"+co.END)
 
 def printInfo(Domain, OPDir):
     print(co.bullets.INFO, co.colors.CYAN+"Target Domain : {}".format(Domain)+co.END)
@@ -178,13 +178,13 @@ def printInfo(Domain, OPDir):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-u", "--url", help="Domain name to perform Attack", type=str, required=True)
+    parser.add_argument("-u", "--url", help="Domain name to perform Attack", type=str)
     parser.add_argument("-o", "--out", help="Output directory name", type=str)
     parser.add_argument("-b", "--blind", help="XSS hunter URL for Blind XSS inection Testing", type=str, default=None)
-    parser.add_argument("-i", "--interactSH", help="InteractSH URL for Catching SSRF", type=str, required=True)
+    parser.add_argument("-i", "--interactSH", help="InteractSH URL for Catching SSRF", type=str)
     args = parser.parse_args()
     # Check argument
-    if args.url is None:
+    if args.url is None and args.interactSH is None:
         Banner()
         parser.print_help()
         sys.exit()
