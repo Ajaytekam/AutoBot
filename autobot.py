@@ -211,8 +211,15 @@ def printInfo(Domain, OPDir):
     print(co.bullets.INFO, co.colors.CYAN+"Target Domain : {}".format(Domain)+co.END)
     print(co.bullets.INFO, co.colors.CYAN+"Result Dir    : {}\n".format(OPDir)+co.END)
 
+class MyParser(argparse.ArgumentParser):
+    def error(self, message):
+        Banner()
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
 def main():
-    parser = argparse.ArgumentParser()
+    parser = MyParser()
     parser.add_argument("-d", "--domain", help="Domain name to perform Attack", type=str)
     parser.add_argument("-o", "--out", help="Output directory name", type=str)
     parser.add_argument("-b", "--blind", help="XSS hunter URL for Blind XSS inection Testing", type=str, default=None)
