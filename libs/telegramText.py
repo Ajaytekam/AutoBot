@@ -2,44 +2,47 @@ import configparser
 import requests
 import os 
 
-def NotifyBot(textMessage):
-    ConfigPath = "/root/notificationConfig.ini"
-    #print("[+] Sending notification to telegram bot")
+def CheckTokens(ConfigPath): 
+    config = configparser.RawConfigParser()
+    if os.path.isfile(ConfigPath):
+        config.read(ConfigPath)
+        if config.has_option("telegram","apiToken") and config.has_option("telegram","chatId"): 
+            return 1 # key found 
+        else:
+            return 2 # config file found but key not found
+    else:
+        return 3 # config file not found
+
+def GetTokens(ConfigPath):
     config = configparser.RawConfigParser()
     if os.path.isfile(ConfigPath):
         config.read(ConfigPath)
         if config.has_option("telegram","apiToken") and config.has_option("telegram","chatId"): 
             apiToken = config.get("telegram","apiToken")
             chatId = config.get("telegram","chatId")
-            send_text = 'https://api.telegram.org/bot'+apiToken+'/sendMessage?chat_id='+chatId+'&parse_mode=Markdown&text='+textMessage
-            response = requests.post(send_text)
-            if response.status_code == 200:
-                #print("\t[!] Message Send successfully")
-                pass
+            return apiToken, chatId
         else:
             print("[-] Error : no credentials are setted for Telegram bot (API token and ChatId)")
+            return 
     else:
         print("[-] Error : There is no config file available '/root/notificationConfig.ini'")
+        return 
 
-def SendDocumentBot(FilePath):
-    ConfigPath = "/root/notificationConfig.ini"
-    #print("[+] Sending document to telegram bot")
-    config = configparser.RawConfigParser()
-    if os.path.isfile(ConfigPath):
-        config.read(ConfigPath)
-        if config.has_option("telegram","apiToken") and config.has_option("telegram","chatId"): 
-            apiToken = config.get("telegram","apiToken")
-            chatId = config.get("telegram","chatId")
-            file = open(FilePath, "rb")
-            file_bytes = file.read()
-            file.close()
-            url = 'https://api.telegram.org/bot{}/sendDocument'.format(apiToken) 
-            response = requests.post(url, params={'chat_id':chatId}, files={'document':(file.name, file_bytes)})
-            if response.status_code == 200:
-                #print("\t[!] file uploaded successfully")
-                pass
-        else:
-            print("[-] Error : no credentials are setted for Telegram bot (API token and ChatId)")
-    else:
-        print("[-] Error : There is no config file available '/root/notificationConfig.ini'")
+def NotifyBot(TelegramKeys, textMessage):
+    #print("[+] Sending notification to telegram bot") 
+    send_text = 'https://api.telegram.org/bot'+TelegramKeys['apiToken']+'/sendMessage?chat_id='+TelegramKeys['chatID']+'&parse_mode=Markdown&text='+textMessage
+    response = requests.post(send_text)
+    if response.status_code == 200:
+        #print("\t[!] Message Send successfully")
+        pass
 
+def SendDocumentBot(TelegramKeys, FilePath):
+    # print("[+] Sending document to telegram bot")
+    file = open(FilePath, "rb")
+    file_bytes = file.read()
+    file.close()
+    url = 'https://api.telegram.org/bot{}/sendDocument'.format(TelegramKeys['apiToken']) 
+    response = requests.post(url, params={'chat_id':TelegramKeys['chatID']}, files={'document':(file.name, file_bytes)})
+    if response.status_code == 200:
+        #print("\t[!] file uploaded successfully")
+        pass

