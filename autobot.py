@@ -137,7 +137,7 @@ def SSRFScan(Domain, InteractSH):
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SSRF Scan Started on target {}".format(Domain))
     executeCommand('cat urls.txt | gf ssrf | httpx -mc 200,201,202,300,301,302 -silent >> ssrf_urls.txt')
-    COMMAND = 'cat ssrf_urls.txt | qsreplace "{}" >> ssrf_paylod_urls.txt 2>&1 /dev/null'.format(InteractSH)
+    COMMAND = 'cat ssrf_urls.txt | qsreplace "https://{}" >> ssrf_paylod_urls.txt 2>&1 /dev/null'.format(InteractSH)
     executeCommand(COMMAND)
     executeCommand('ffuf -c -w ssrf_paylod_urls.txt -u FUZZ -o ssrf_fuzz_result.txt 2>&1 /dev/null')
     # cleaning extra files
