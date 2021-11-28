@@ -300,7 +300,7 @@ def main():
     # Change directory
     os.chdir(OPDir)
     # Setting-up the spinner 
-    spinner = Halo(text=' 🤖 Work in Progress..', spinner='dots')
+    spinner = Halo(text=' ', spinner='dots')
     print(co.bullets.INFO+co.colors.CYAN+" Collecting Target Domain URLs.."+co.END)
     spinner.start()
     ## Collecting urls gg
