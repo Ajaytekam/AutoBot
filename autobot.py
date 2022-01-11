@@ -208,7 +208,7 @@ def Banner():
    d88P   888 888  888 888   888  888 888    888 888  888 888    
   d8888888888 Y88b 888 Y88b. Y88..88P 888   d88P Y88..88P Y88b.  
  d88P     888 "Y88888  "Y888  "Y88P"  8888888P"   "Y88P"  "Y888    """+co.colors.RED+"Version 0.1\n"+co.END)
-    print("# "+co.BOLD+"Author     : "+co.colors.CYAN+"Ajay Kumar Tekam [ ajaytekam.github.com ]"+co.END)
+    print("# "+co.BOLD+"Author     : "+co.colors.CYAN+"Ajay Kumar Tekam [ ajaytekam.github.io ]"+co.END)
     print("# "+co.BOLD+"Blog       : "+co.colors.CYAN+"https://sec-art.net/"+co.END)
     print("# "+co.BOLD+"About Tool : "+co.colors.CYAN+"Perform Automated Checks for XSS, SQLI, OpenRedirect, SSRF, IDOR."+co.END)
     print(co.colors.BLUE+"################################################################################\n"+co.END)
