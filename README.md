@@ -1,8 +1,8 @@
 # Autobot 
 
-Check for vulnerabilities on Passivelly collected URLs from tools [gau](https://github.com/lc/gau) and [waybackurls](https://github.com/tomnomnom/waybackurls) and send the result files and notofocatiosn messages to telegram Bot.  
+Check for vulnerabilities on Passivelly collected URLs from tools [gau](https://github.com/lc/gau) and [waybackurls](https://github.com/tomnomnom/waybackurls) and send the result files and notifications messages to telegram Bot.     
 
-![](sc.png)
+![](sc.png)   
 
 ### How It Works   
 
